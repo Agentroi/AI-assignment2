@@ -17,8 +17,12 @@ def cnf(belief, newbelief):
 def resolve(clause1, clause2):
     resolvents = []
 
-    literals1 = list(clause1.args)
-    literals2 = list(clause2.args)
+    print("clause1:", clause1)
+    print("clause2:", clause2)
+
+
+    literals1 = list(clause1.args if isinstance(clause1, sympy.Or) else [clause1])
+    literals2 = list(clause2.args if isinstance(clause2, sympy.Or) else [clause2])
 
     print("literals1:", literals1)
     print("literals2:", literals2)
@@ -39,11 +43,16 @@ def resolution(cnf):
         n = len(clauses)
         pairs = [(clauses[i], clauses[j]) for i in range(n) for j in range(i + 1, n)]
         for ci, cj in pairs:
+            if isinstance(ci, list):
+                ci = ci[0]
+            if isinstance(cj, list):
+                cj = cj[0]
             resolvents = resolve(ci, cj)
             if [] in resolvents:  # Empty clause found, contradiction
                 return True
             new_clauses.extend(resolvents)
-        if new_clauses <= clauses:  # No new clauses added, can't proceed further
+        print("new clauses:", new_clauses)
+        if len(new_clauses) <= len(clauses):  # No new clauses added, can't proceed further
             return False
         clauses += new_clauses
 
@@ -51,13 +60,15 @@ if __name__ == '__main__':
 
     #TODO: Implement belief base with user input, 1) give symbols 2) give beliefbase 3) give new belief
     #Remember to add correct paranthesis as the parser is a bit wack
-    p, q, r, s = sympy.symbols('p q r s')
-    initial_belief = [(~p >> q),(q >> p),(p >> (r & s))]
-    new_belief = p & r & s
+    p, q, r, s, m = sympy.symbols('p q r s m')
+    #initial_belief = [(~p >> q),(q >> p),(p >> (r & s))]
+    #new_belief = q & ~p
+    initial_belief = [(~r>>q), ~q]
+    new_belief = r
 
     full_cnf = cnf(initial_belief, new_belief)
     
-    print(full_cnf)
+    print("full cnf:", full_cnf)
     print(resolution(full_cnf))
 
 
