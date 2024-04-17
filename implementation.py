@@ -2,69 +2,62 @@ import sympy
 from sympy.logic.boolalg import to_cnf
 from sympy.logic.boolalg import Or, And, Not
 
-def pl_resolution(CNF):
-    clauses = set(frozenset(c.args) if isinstance(c, Or) else frozenset([c]) for c in CNF)
-    new = set()
-    while True:
-        for ci in clauses:
-            for cj in clauses:
-                if ci != cj:
-                    resolvents = resolve(Or(*ci), Or(*cj))
-                    if frozenset() in resolvents:  # Empty clause found
-                        return True
-                    new.update(resolvents)
-        if new <= clauses:
-            return False
-        clauses.update(new)
+def cnf(belief, newbelief):
+    anded_formula = belief[0]
+    not_new_belief = sympy.Not(newbelief)
 
+    for formula in belief[1:]: 
+        anded_formula = sympy.And(anded_formula,formula)
 
-def resolve(ci, cj):
-    # Convert sympy logical expressions to sets of literals
-    ci_set = set(ci.args) if isinstance(ci, Or) else {ci}
-    cj_set = set(cj.args) if isinstance(cj, Or) else {cj}
-    
-    resolvents = set()
-    for di in ci_set:
-        for dj in cj_set:
-            if di == ~dj or ~di == dj:
-                # Create new clause without the resolved literals
-                new_clause = (ci_set - {di}) | (cj_set - {dj})
-                resolvents.add(frozenset(new_clause))
+    full_belief = sympy.And(anded_formula,not_new_belief)
+
+    cnfed_formula = sympy.to_cnf(full_belief)
+    return cnfed_formula
+
+def resolve(clause1, clause2):
+    resolvents = []
+
+    literals1 = list(clause1.args)
+    literals2 = list(clause2.args)
+
+    print("literals1:", literals1)
+    print("literals2:", literals2)
+
+    for literal1 in literals1:
+        for literal2 in literals2:
+            if literal1 == ~literal2 or ~literal1 == literal2:
+                resolvent = [l for l in literals1 if l != literal1] + [l for l in literals2 if l != literal2]
+                resolvents.append(resolvent)
     return resolvents
 
-def handle_contradiction(belief_base_cnf):
-    # Sort beliefs by priority (higher priority first)
-    belief_base_cnf.sort(key=lambda x: x[1], reverse=True)
-    for i in range(len(belief_base_cnf)):
-        formula, priority = belief_base_cnf[i]
-        # Check for contradiction with the current belief
-        if pl_resolution({formula} | {b for b, p in belief_base_cnf if p != priority}):
-            # Remove the belief causing the contradiction
-            return belief_base_cnf[:i] + belief_base_cnf[i+1:]
-    return belief_base_cnf
+def resolution(cnf):
+    clauses = list(cnf.args if isinstance(cnf, sympy.And) else [cnf])
+    print("clauses:", clauses)
 
-def expand_belief_base(belief_base_cnf, new_belief, priority):
-    new_belief_cnf = to_cnf(new_belief)
-    belief_base_cnf.append((new_belief_cnf, priority))
-    # Handle potential contradictions after adding the new belief
-    return handle_contradiction(belief_base_cnf)
-
+    while True:
+        new_clauses = []
+        n = len(clauses)
+        pairs = [(clauses[i], clauses[j]) for i in range(n) for j in range(i + 1, n)]
+        for ci, cj in pairs:
+            resolvents = resolve(ci, cj)
+            if [] in resolvents:  # Empty clause found, contradiction
+                return True
+            new_clauses.extend(resolvents)
+        if new_clauses <= clauses:  # No new clauses added, can't proceed further
+            return False
+        clauses += new_clauses
 
 if __name__ == '__main__':
-    
-    # Define the logical variables
-    A, B, C = sympy.symbols('A B C')
+
+    #TODO: Implement belief base with user input, 1) give symbols 2) give beliefbase 3) give new belief
+    #Remember to add correct paranthesis as the parser is a bit wack
     p, q, r, s = sympy.symbols('p q r s')
-    # Initial belief base with priorities
-    initial_belief_base = [(to_cnf(~p >> q), 1),(to_cnf(q >> p), 2),(to_cnf(p >> r & s), 3)]
-    # initial_belief_base = [(to_cnf(A & B), 1), (to_cnf(~B | C), 2), (to_cnf(A >> C), 3)]
-
-    # New belief to add
-    #new_belief = A & ~C
+    initial_belief = [(~p >> q),(q >> p),(p >> (r & s))]
     new_belief = p & r & s
-    new_priority = 4
 
-    # Expand the belief base with the new belief
-    expanded_belief_base = expand_belief_base(initial_belief_base, new_belief, new_priority)
-    print("Expanded KB: ",expanded_belief_base)
+    full_cnf = cnf(initial_belief, new_belief)
+    
+    print(full_cnf)
+    print(resolution(full_cnf))
+
 
