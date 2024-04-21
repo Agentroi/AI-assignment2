@@ -62,6 +62,35 @@ def resolve(clause1, clause2):
                     return False  # Empty clause (contradiction)
     return None  # No resolution possible
 
+def check_implication(beliefs, formula):
+    # Simplified checking using resolution or other means
+    return resolution(to_cnf(And(*beliefs, Not(formula)))) is False
+
+def find_remainder_sets(belief_base, phi):
+    remainders = []
+    for i in range(len(belief_base)):
+        test_base = belief_base[:i] + belief_base[i+1:]
+        if not check_implication(test_base, phi):
+            remainders.append(test_base)
+    return remainders
+
+def select_remainder_based_on_entrenchment(remainders, entrenchment):
+    # Selecting remainders that have the highest sum of entrenchment values
+    max_entrenchment_value = -1
+    selected_remainders = []
+    for remainder in remainders:
+        entrenchment_value = sum(entrenchment.get(belief, 0) for belief in remainder)
+        if entrenchment_value > max_entrenchment_value:
+            max_entrenchment_value = entrenchment_value
+            selected_remainders = remainder
+    return selected_remainders
+
+def contract(belief_base, phi):
+    remainders = find_remainder_sets(belief_base, phi)
+    selected_remainder = select_remainder_based_on_entrenchment(remainders, entrenchment)
+    return selected_remainder
+
+
 if __name__ == '__main__':
 
     p, q, r, s = sympy.symbols('p q r s')
@@ -70,17 +99,26 @@ if __name__ == '__main__':
 
     #initial_belief = [~r >> q, ~q]
     #new_belief = r
+    # Example belief base and entrenchment levels
 
     initial_belief = [(~p | ~q | r), (q | r), (p | r)]
+    entrenchment = {
+        (~p | ~q | r): 1,
+        (q | r): 2,
+        (p | r): 3 
+    }
     new_belief = r
-
     full_cnf = cnf(initial_belief, new_belief)
+
+    phi_to_contract = q
+    contracted_belief_base = contract(initial_belief, phi_to_contract)
+    print("Contracted Belief Base:", contracted_belief_base)
     
-    print("FULL CNF; ", full_cnf)
-    print(resolution(full_cnf))
-    resolution_result = resolution(full_cnf)
-    if resolution_result is False:
-        print("Consistent!")
-    else:
-        print("Not Consistent!")
+    # print("FULL CNF; ", full_cnf)
+    # print(resolution(full_cnf))
+    # resolution_result = resolution(full_cnf)
+    # if resolution_result is False:
+    #     print("Consistent!")
+    # else:
+    #     print("Not Consistent!")
 
