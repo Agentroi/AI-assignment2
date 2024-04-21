@@ -68,12 +68,15 @@ if __name__ == '__main__':
     #initial_belief = [(~p >> q),(q >> p),(p >> (r & s))]
     #new_belief = p & r & s
 
-    initial_belief = [~r >> q, ~q]
+    #initial_belief = [~r >> q, ~q]
+    #new_belief = r
+
+    initial_belief = [(~p | ~q | r), (q | r), (p | r)]
     new_belief = r
 
     full_cnf = cnf(initial_belief, new_belief)
     
-    print(full_cnf)
+    print("FULL CNF; ", full_cnf)
     print(resolution(full_cnf))
     resolution_result = resolution(full_cnf)
     if resolution_result is False:
