@@ -1,6 +1,7 @@
 import sympy
 from sympy.logic.boolalg import to_cnf
 from sympy.logic.boolalg import Or, And, Not
+import itertools
 
 def cnf(belief, newbelief):
     anded_formula = belief[0]
@@ -15,21 +16,19 @@ def cnf(belief, newbelief):
     return cnfed_formula
 
 def resolution(cnf_expression):
-    # Extract clauses from CNF, each clause is a disjunction
     clauses = set(cnf_expression.args if isinstance(cnf_expression, And) else [cnf_expression])
     original_clauses = clauses.copy()
     new_clauses = True
 
     while new_clauses:
         new_clauses = set()
-        # Try all pairs of clauses
         for clause1 in list(clauses):
             for clause2 in list(clauses):
                 if clause1 is not clause2:
                     resolvent = resolve(clause1, clause2)
                     if resolvent is False:
                         print(f"Resolving {clause1} and {clause2} yields a contradiction.")
-                        return False  # Contradiction found
+                        return False  # Indicate contradiction found
                     elif resolvent and resolvent not in clauses:
                         new_clauses.add(resolvent)
                         print(f"Resolving {clause1} and {clause2} yields {resolvent}.")
@@ -46,7 +45,8 @@ def resolution(cnf_expression):
         print("No contradiction found; resolved clauses:")
         for clause in clauses - original_clauses:
             print(clause)
-        return clauses
+        return clauses  # Return all clauses if no contradiction is found
+
 
 def resolve(clause1, clause2):
     literals1 = set(clause1.args if isinstance(clause1, Or) else [clause1])
@@ -54,30 +54,37 @@ def resolve(clause1, clause2):
 
     for lit1 in literals1:
         for lit2 in literals2:
-            if lit1 == ~lit2 or ~lit1 == lit2:
+            if lit1 == ~lit2 or ~lit1 == lit2:  # Check for complementary literals
                 new_literals = (literals1.union(literals2) - {lit1, lit2})
                 if new_literals:
-                    return Or(*new_literals)
+                    return Or(*new_literals)  # Return new clause formed by resolving the pair
                 else:
-                    return False  # Empty clause (contradiction)
-    return None  # No resolution possible
+                    return False  # Return False indicating an empty clause (contradiction)
+    return None  # Return None if no resolution is possible
 
 def check_implication(beliefs, formula):
-    # We should return True if the implication holds, i.e., a contradiction is found when negating the formula
     test_formula = sympy.And(*beliefs, sympy.Not(formula))
     contradiction_found = resolution(to_cnf(test_formula)) == False
-    return contradiction_found  # True if formula is implied by beliefs
+    return contradiction_found  # True if 'beliefs' imply 'formula'
+
 
 def find_remainder_sets(belief_base, phi):
     remainders = []
-    for i in range(len(belief_base)):
-        test_base = belief_base[:i] + belief_base[i+1:]
-        if not check_implication(test_base, phi):  # Checks if test_base does NOT imply phi
-            remainders.append(test_base)
-        else:
-            print(f"Subset {test_base} implies {phi}, hence not a remainder.")
+    # Generate all possible non-empty subsets of the belief base
+    for r in range(1, len(belief_base) + 1):
+        for subset in itertools.combinations(belief_base, r):
+            if phi not in subset:  # Optionally check if phi is directly in the subset
+                implies_phi = check_implication(subset, phi)
+                print(f"Testing subset: {subset}")
+                if not implies_phi:
+                    print(f"Subset {subset} does NOT imply {phi}, adding to remainders.")
+                    remainders.append(subset)
+                else:
+                    print(f"Subset {subset} implies {phi}, hence not a remainder.")
     print(f"Found {len(remainders)} valid remainder(s).")
     return remainders
+
+
 
 def select_remainder_based_on_entrenchment(remainders, entrenchment):
     # Ensuring at least one remainder is selected if available
@@ -114,16 +121,17 @@ if __name__ == '__main__':
     #     (p | r): 3 
     # }
 
-    initial_belief = [p & q, r, p]
+    initial_belief = [r, p & q, p | s,s|q]
     entrenchment = {
-        p & q: 3,
-        p: 1,
-        r: 2
+        (p & q): 1,
+        (r): 2,
+        (p | s): 3,
+        (s | q): 4
     }
     new_belief = r
     full_cnf = cnf(initial_belief, new_belief)
 
-    phi_to_contract = p
+    phi_to_contract = ~r
     contracted_belief_base = contract(initial_belief, phi_to_contract, entrenchment)
     print("Contracted Belief Base:", contracted_belief_base)
     
