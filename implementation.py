@@ -84,8 +84,6 @@ def find_remainder_sets(belief_base, phi):
     print(f"Found {len(remainders)} valid remainder(s).")
     return remainders
 
-
-
 def select_remainder_based_on_entrenchment(remainders, entrenchment):
     # Ensuring at least one remainder is selected if available
     max_entrenchment_value = -1
@@ -102,6 +100,20 @@ def contract(belief_base, phi, entrenchment):
     remainders = find_remainder_sets(belief_base, phi)
     selected_remainder = select_remainder_based_on_entrenchment(remainders, entrenchment)
     return selected_remainder if selected_remainder is not None else belief_base
+
+def expand_belief_base(belief_base, new_belief, entrenchment):
+    """
+    Expands the belief base by optionally contracting with the negation of the new belief
+    and then adding the new belief to ensure consistency.
+    """
+    # Contract the belief base with the negation of the new belief to resolve potential inconsistencies
+    negated_new_belief = sympy.Not(new_belief)
+    contracted_base = contract(belief_base, negated_new_belief, entrenchment)
+    
+    contracted_base = list(contracted_base) 
+    # Now add the new belief to the contracted belief base
+    expanded_base = contracted_base + [new_belief]
+    return expanded_base
 
 
 if __name__ == '__main__':
@@ -121,19 +133,39 @@ if __name__ == '__main__':
     #     (p | r): 3 
     # }
 
-    initial_belief = [r, p & q, p | s,s|q]
-    entrenchment = {
-        (p & q): 1,
-        (r): 2,
-        (p | s): 3,
-        (s | q): 4
-    }
-    new_belief = r
-    full_cnf = cnf(initial_belief, new_belief)
+    # initial_belief = [p,q,r]
+    # entrenchment = {
+    #     p&q: 1,
+    #     ~p|~q: 2
+    # }
+    # new_belief = r
+    # full_cnf = cnf(initial_belief, new_belief)
 
-    phi_to_contract = ~r
-    contracted_belief_base = contract(initial_belief, phi_to_contract, entrenchment)
-    print("Contracted Belief Base:", contracted_belief_base)
+    # #phi_to_contract = ~p
+    # phi_to_add = p
+    # new_belief_base = expand_belief_base(initial_belief, phi_to_add, entrenchment)
+    # print("Expanded Belief Base:", new_belief_base)
+    
+    initial_belief = [p, p&q, r]  # Example belief base
+    entrenchment = {
+        p: 3,
+        p&q: 2,
+        r: 1
+    }
+
+    # Logical equivalents
+    phi = p
+    psi = Not(Not(p))  # Equivalent to p
+
+    contracted_with_phi = contract(initial_belief, phi, entrenchment)
+    contracted_with_psi = contract(initial_belief, psi, entrenchment)
+
+    print("Contracted with phi (p):", contracted_with_phi)
+    print("Contracted with psi (~~p):", contracted_with_psi)
+    print("Are the contracted bases equivalent?", contracted_with_phi == contracted_with_psi)
+
+    #contracted_belief_base = contract(initial_belief, phi_to_contract, entrenchment)
+    #print("Contracted Belief Base:", contracted_belief_base)
     
     # print("FULL CNF; ", full_cnf)
     # print(resolution(full_cnf))
