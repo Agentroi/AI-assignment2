@@ -63,32 +63,38 @@ def resolve(clause1, clause2):
     return None  # No resolution possible
 
 def check_implication(beliefs, formula):
-    # Simplified checking using resolution or other means
-    return resolution(to_cnf(And(*beliefs, Not(formula)))) is False
+    # We should return True if the implication holds, i.e., a contradiction is found when negating the formula
+    test_formula = sympy.And(*beliefs, sympy.Not(formula))
+    contradiction_found = resolution(to_cnf(test_formula)) == False
+    return contradiction_found  # True if formula is implied by beliefs
 
 def find_remainder_sets(belief_base, phi):
     remainders = []
     for i in range(len(belief_base)):
         test_base = belief_base[:i] + belief_base[i+1:]
-        if not check_implication(test_base, phi):
+        if not check_implication(test_base, phi):  # Checks if test_base does NOT imply phi
             remainders.append(test_base)
+        else:
+            print(f"Subset {test_base} implies {phi}, hence not a remainder.")
+    print(f"Found {len(remainders)} valid remainder(s).")
     return remainders
 
 def select_remainder_based_on_entrenchment(remainders, entrenchment):
-    # Selecting remainders that have the highest sum of entrenchment values
+    # Ensuring at least one remainder is selected if available
     max_entrenchment_value = -1
-    selected_remainders = []
+    selected_remainder = None
     for remainder in remainders:
         entrenchment_value = sum(entrenchment.get(belief, 0) for belief in remainder)
         if entrenchment_value > max_entrenchment_value:
             max_entrenchment_value = entrenchment_value
-            selected_remainders = remainder
-    return selected_remainders
+            selected_remainder = remainder
+    return selected_remainder or []  # Return an empty list if no remainders are selected
 
-def contract(belief_base, phi):
+# Update the contraction function to handle cases where no remainder is selected
+def contract(belief_base, phi, entrenchment):
     remainders = find_remainder_sets(belief_base, phi)
     selected_remainder = select_remainder_based_on_entrenchment(remainders, entrenchment)
-    return selected_remainder
+    return selected_remainder if selected_remainder is not None else belief_base
 
 
 if __name__ == '__main__':
@@ -101,17 +107,24 @@ if __name__ == '__main__':
     #new_belief = r
     # Example belief base and entrenchment levels
 
-    initial_belief = [(~p | ~q | r), (q | r), (p | r)]
+    # initial_belief = [(~p | ~q | r), (q | r), (p | r)]
+    # entrenchment = {
+    #     (~p | ~q | r): 1,
+    #     (q | r): 2,
+    #     (p | r): 3 
+    # }
+
+    initial_belief = [p & q, r, p]
     entrenchment = {
-        (~p | ~q | r): 1,
-        (q | r): 2,
-        (p | r): 3 
+        p & q: 3,
+        p: 1,
+        r: 2
     }
     new_belief = r
     full_cnf = cnf(initial_belief, new_belief)
 
-    phi_to_contract = q
-    contracted_belief_base = contract(initial_belief, phi_to_contract)
+    phi_to_contract = p
+    contracted_belief_base = contract(initial_belief, phi_to_contract, entrenchment)
     print("Contracted Belief Base:", contracted_belief_base)
     
     # print("FULL CNF; ", full_cnf)
