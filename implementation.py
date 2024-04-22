@@ -67,7 +67,6 @@ def check_implication(beliefs, formula):
     contradiction_found = resolution(to_cnf(test_formula)) == False
     return contradiction_found  # True if 'beliefs' imply 'formula'
 
-
 def find_remainder_sets(belief_base, phi):
     remainders = []
     # Generate all possible non-empty subsets of the belief base
@@ -101,7 +100,7 @@ def contract(belief_base, phi, entrenchment):
     selected_remainder = select_remainder_based_on_entrenchment(remainders, entrenchment)
     return selected_remainder if selected_remainder is not None else belief_base
 
-def expand_belief_base(belief_base, new_belief, entrenchment):
+def revise_belief_base(belief_base, new_belief, entrenchment):
     """
     Expands the belief base by optionally contracting with the negation of the new belief
     and then adding the new belief to ensure consistency.
@@ -115,63 +114,165 @@ def expand_belief_base(belief_base, new_belief, entrenchment):
     expanded_base = contracted_base + [new_belief]
     return expanded_base
 
+# Following are tests for rationality postulates of contraction
+def test_success_postulate(belief_base, phi, entrenchment):
+    contracted_base = contract(belief_base, phi, entrenchment)
+    print("Testing Success Postulate:")
+    print(f"Belief Base after contracting {phi}: {contracted_base}")
+    return phi not in contracted_base
+
+def test_inclusion_postulate(belief_base, phi, entrenchment):
+    contracted_base = contract(belief_base, phi, entrenchment)
+    print("Testing Inclusion Postulate:")
+    is_included = all(belief in belief_base for belief in contracted_base)
+    print(f"Is every element in the contracted base also in the original base? {is_included}")
+    return is_included
+
+def test_vacuity_postulate(belief_base, phi, entrenchment):
+    if not check_implication(belief_base, phi):  # Assume this checks if phi is a consequence of B
+        contracted_base = contract(belief_base, phi, entrenchment)
+        print("Testing Vacuity Postulate:")
+        print(f"Contracted base when {phi} is not a consequence should be unchanged: {contracted_base}")
+        vacuity = contracted_base == belief_base
+        return vacuity
+    return True  # Vacuity not applicable if phi is a consequence of B
+
+
+def test_extensionality_postulate(belief_base, phi, psi, entrenchment):
+    contracted_with_phi = contract(belief_base, phi, entrenchment)
+    contracted_with_psi = contract(belief_base, psi, entrenchment)
+    print("Testing Extensionality Postulate:")
+    print(f"Contracted with {phi}: {contracted_with_phi}")
+    print(f"Contracted with {psi}: {contracted_with_psi}")
+    extentionality = contracted_with_phi == contracted_with_psi
+    return extentionality
+
+def test_success_postulate_revision(belief_base, phi, entrenchment):
+    revised_base = revise_belief_base(belief_base, phi, entrenchment)
+    success = phi in revised_base  # This check should be adjusted if revision outputs a formal expression.
+    print(f"Testing Success Postulate for revision with {phi}: {'Passed' if success else 'Failed'}")
+    return success
+
+def test_inclusion_postulate_revision(belief_base, phi, entrenchment):
+    revised_base = revise_belief_base(belief_base, phi, entrenchment)
+    inclusion = set(revised_base).issubset(set(belief_base + [phi]))
+    print(f"Testing Inclusion Postulate for revision with {phi}: {'Passed' if inclusion else 'Failed'}")
+    return inclusion
+
+def test_vacuity_postulate_revision(belief_base, phi, entrenchment):
+    if check_implication(belief_base, Not(phi)):
+        revised_base = revise_belief_base(belief_base, phi, entrenchment)
+        vacuity = revised_base == belief_base
+        print(f"Testing Vacuity Postulate for revision with {phi}: {'Passed' if vacuity else 'Failed'}")
+        return vacuity
+    print(f"Vacuity Postulate for revision not applicable as {phi} is not a consequence of B.")
+    return True  # Consider it passed if phi is not a consequence of B
+
+def test_consistency_postulate_revision(belief_base, phi, entrenchment):
+    for belief in belief_base:
+        # List of Every element in belief_base except from belief
+        belief_base_minus_belief = [b for b in belief_base if b != belief]
+        cnf_expression = cnf(belief_base_minus_belief, belief)
+        resolution_result = resolution(cnf_expression)
+        if resolution_result is True:
+            print("The initial belief base was inconsistent.")
+            return True
+    
+    revised_base = revise_belief_base(belief_base, phi, entrenchment)
+    for belief in revised_base:
+        revised_base_minus_belief = [b for b in revised_base if b != belief]
+        cnf_expression = cnf(revised_base_minus_belief, belief)
+        resolution_result = resolution(cnf_expression)
+        if resolution_result is True:
+            print("The revised belief base is inconsistent.")
+            return False
+    
+    print("The revised belief base is consistent.")
+    return True
+
+def test_extensionality_postulate_revision(belief_base, phi, psi, entrenchment):
+    revised_with_phi = revise_belief_base(belief_base, phi, entrenchment)
+    revised_with_psi = revise_belief_base(belief_base, psi, entrenchment)
+    extensionality = revised_with_phi == revised_with_psi
+    print(f"Testing Extensionality Postulate for revision with {phi} and {psi}: {'Passed' if extensionality else 'Failed'}")
+    return extensionality
+
 
 if __name__ == '__main__':
-
+    # Define inputs
     p, q, r, s = sympy.symbols('p q r s')
-    #initial_belief = [(~p >> q),(q >> p),(p >> (r & s))]
-    #new_belief = p & r & s
-
-    #initial_belief = [~r >> q, ~q]
-    #new_belief = r
-    # Example belief base and entrenchment levels
-
-    # initial_belief = [(~p | ~q | r), (q | r), (p | r)]
-    # entrenchment = {
-    #     (~p | ~q | r): 1,
-    #     (q | r): 2,
-    #     (p | r): 3 
-    # }
-
-    # initial_belief = [p,q,r]
-    # entrenchment = {
-    #     p&q: 1,
-    #     ~p|~q: 2
-    # }
-    # new_belief = r
-    # full_cnf = cnf(initial_belief, new_belief)
-
-    # #phi_to_contract = ~p
-    # phi_to_add = p
-    # new_belief_base = expand_belief_base(initial_belief, phi_to_add, entrenchment)
-    # print("Expanded Belief Base:", new_belief_base)
-    
-    initial_belief = [p, p&q, r]  # Example belief base
-    entrenchment = {
-        p: 3,
-        p&q: 2,
-        r: 1
-    }
-
-    # Logical equivalents
+    initial_belief = [p, p & q, r]
+    entrenchment = {p: 3, p & q: 2, r: 1}
     phi = p
-    psi = Not(Not(p))  # Equivalent to p
+    psi = Not(Not(phi))  # Logical equivalent to phi
 
-    contracted_with_phi = contract(initial_belief, phi, entrenchment)
-    contracted_with_psi = contract(initial_belief, psi, entrenchment)
+    # Test Success Postulate
+    if test_success_postulate(initial_belief, phi, entrenchment) == True:
+        print("**********Success Postulate holds!")
+    else:
+        print("**********Success Postulate does not hold!")
 
-    print("Contracted with phi (p):", contracted_with_phi)
-    print("Contracted with psi (~~p):", contracted_with_psi)
-    print("Are the contracted bases equivalent?", contracted_with_phi == contracted_with_psi)
+    # Test Inclusion Postulate
+    if test_inclusion_postulate(initial_belief, phi, entrenchment) == True:
+        print("**********Inclusion Postulate holds!")
+    else:
+        print("**********Inclusion Postulate does not hold!")
 
-    #contracted_belief_base = contract(initial_belief, phi_to_contract, entrenchment)
-    #print("Contracted Belief Base:", contracted_belief_base)
+    # Test Vacuity Postulate
+    if test_vacuity_postulate(initial_belief, phi, entrenchment) == True:
+        print("**********Vacuity Postulate holds!")
+    else:
+        print("**********Vacuity Postulate does not hold!")
+
+    # Test Extensionality Postulate
+    if test_extensionality_postulate(initial_belief, phi, psi, entrenchment) == True:
+        print("**********Extensionality Postulate holds!")
+    else:
+        print("**********Extensionality Postulate does not hold!")
+
+    # Test Success Postulate for revision
+    if test_success_postulate_revision(initial_belief, phi, entrenchment) == True:
+        print("**********Success Postulate for revision holds!")
+    else:
+        print("**********Success Postulate for revision does not hold!")
+
+    # Test Inclusion Postulate for revision
+    if test_inclusion_postulate_revision(initial_belief, phi, entrenchment) == True:
+        print("**********Inclusion Postulate for revision holds!")
+    else:
+        print("**********Inclusion Postulate for revision does not hold!")
+
+    # Test Vacuity Postulate for revision
+    if test_vacuity_postulate_revision(initial_belief, phi, entrenchment) == True:
+        print("**********Vacuity Postulate for revision holds!")
+    else:
+        print("**********Vacuity Postulate for revision does not hold!")
+
+    # Test for Consistency Postulate for revision
+    if test_consistency_postulate_revision(initial_belief, phi, entrenchment) == True:
+        print("**********Consistency Postulate for revision holds!")
+    else:
+        print("**********Consistency Postulate for revision does not hold!")
     
-    # print("FULL CNF; ", full_cnf)
-    # print(resolution(full_cnf))
-    # resolution_result = resolution(full_cnf)
-    # if resolution_result is False:
-    #     print("Consistent!")
-    # else:
-    #     print("Not Consistent!")
+    # Test Extensionality Postulate for revision
+    if test_extensionality_postulate_revision(initial_belief, phi, psi, entrenchment) == True:
+        print("**********Extensionality Postulate for revision holds!")
+    else:
+        print("**********Extensionality Postulate for revision does not hold!")
+    
+    
+    ## Following code if you want to test CNF and resolution functions
+    """
+    full_cnf = cnf(initial_belief, new_belief=p) # Testing CNF
+    print("FULL CNF; ", full_cnf)
+    print(resolution(full_cnf))
+
+    resolution_result = resolution(full_cnf) # Testing resolution
+
+    if resolution_result is False: # Resolution returns false when there is found a contradiction
+        print("Consistent!")
+    else:
+        print("Not Consistent!")
+    """
+    
 
