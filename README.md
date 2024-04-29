@@ -14,6 +14,5 @@ Select an action:
 3. Contract a belief from the belief base
 4. Revise the belief base
 5. Exit
-
-The interface will otherwise prompt you, while using the system.
 ```
+The interface will otherwise prompt you, while using the system.
