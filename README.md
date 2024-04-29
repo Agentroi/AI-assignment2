@@ -6,6 +6,8 @@ First, you need to initialize your knowledge base. Write a belief, then enter. T
 ``'p & q' for 'p AND q', 'p | q' for 'p OR q', and '~p' for 'NOT p'. For equivalance, use Equvialent(p,q) and for implication, use p >> q ``
 
 Thereafter you can choose an action from the following list:
+
+```bash
 Select an action:
 1. Add a new belief to the belief base
 2. Perform a resolution on the belief base
@@ -13,4 +15,5 @@ Select an action:
 4. Revise the belief base
 5. Exit
 
-The interface will otherwise prompt you, while using the system. 
+The interface will otherwise prompt you, while using the system.
+```
